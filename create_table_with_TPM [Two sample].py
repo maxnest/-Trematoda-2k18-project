@@ -12,6 +12,12 @@ except ImportError:
     print("Please check if module 'argparse' is installed")
     quit()
 
+try:
+    import numpy
+except ImportError:
+    print("Please check if module 'numpy' is installed")
+    quit()
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--tab', type=argparse.FileType('r'), required=True,
                     help="table with correct groups of homologs or orthologs "
@@ -76,23 +82,19 @@ def write_expression(group_dict, file_with_expression, all_values, rep_num):
 
 def write_output(group_dict, tag, first_tag, second_tag):
     with open("{tag}.tab".format(tag=tag), 'a') as output_file:
-        output_file.write("Annotation\t{sample_1}_1\t{sample_1}_2\t{sample_2}_1\t{sample_2}_2\n".format(
+        output_file.write("Annotation\t{sample_1}\t{sample_2}\t\n".format(
             sample_1=first_tag, sample_2=second_tag
         ))
         for group, values in group_dict.items():
-            sample_1_first_rep, sample_1_second_rep, sample_2_first_rep, sample_2_second_rep = 0, 0, 0, 0
+            sample_1, sample_2 = 0, 0
             for contig in values:
                 if first_tag in contig:
-                    sample_1_first_rep += group_dict[group][contig]["rep_1"]
-                    sample_1_second_rep += group_dict[group][contig]["rep_2"]
+                    sample_1 += round(numpy.mean([float(group_dict[group][contig]["rep_1"]),
+                                                  float(group_dict[group][contig]["rep_2"])]), 2)
                 elif second_tag in contig:
-                    sample_2_first_rep += group_dict[group][contig]["rep_1"]
-                    sample_2_second_rep += group_dict[group][contig]["rep_2"]
-            output_file.write("{ID}\t{sample_1_1}\t{sample_1_2}\t"
-                              "{sample_2_1}\t{sample_2_2}\n".format(ID=group, sample_1_1=sample_1_first_rep,
-                                                                    sample_1_2=sample_1_second_rep,
-                                                                    sample_2_1=sample_2_first_rep,
-                                                                    sample_2_2=sample_2_second_rep))
+                    sample_2 += round(numpy.mean([float(group_dict[group][contig]["rep_1"]),
+                                                  float(group_dict[group][contig]["rep_2"])]), 2)
+            output_file.write("{ID}\t{sample_1}\t{sample_2}\n".format(ID=group, sample_1=sample_1, sample_2=sample_2))
 
 if __name__ == "__main__":
     group_dict, all_values = {}, []

@@ -4,6 +4,7 @@ E-mail: maxnest@ro.ru
 Organization: St.Petersburg State University, Russia
 Department: Department of Invertebrate zoology
 Data: 01.05.2018
+Last modification: 07.05.2018
 """
 
 try:
@@ -11,6 +12,15 @@ try:
 except ImportError:
     print("Please check if module 'argparse' is installed")
     quit()
+
+try:
+    import numpy
+except ImportError:
+    print("Please check if module 'numpy' is installed")
+    quit()
+
+from operator import itemgetter
+from math import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--tab', type=argparse.FileType('r'), required=True,
@@ -76,7 +86,7 @@ def read_table_with_groups(tab, group_dict, all_values):
         group_name, values = group_description[0], group_description[1:]
         group_dict["{name}".format(name=group_name)] = \
             {value: {"rep_1": 0, "rep_2": 0} for value in values if len(value) > 1}
-        all_values.extend(values)
+        all_values.extend([value for value in values if len(value) > 1])
 
 
 def write_expression(group_dict, file_with_expression, all_values, rep_num):
@@ -87,59 +97,57 @@ def write_expression(group_dict, file_with_expression, all_values, rep_num):
     @param all_values: python list with all contigs from 'group_dict'
     @param rep_num: number of biological replicate
     """
+    TPM_dict = {}
     head = file_with_expression.readline()
     for line in file_with_expression:
         contig_description = line.strip().split("\t")
         contig_id, TPM = contig_description[0], contig_description[3]
         if contig_id in all_values:
-            for group, contigs in group_dict.items():
-                if contig_id in contigs:
-                    group_dict[group][contig_id]["rep_{rep_num}".format(rep_num=rep_num)] += float(TPM)
-                    break
+            TPM_dict[contig_id] = float(TPM)
+
+    keys = [key for key in TPM_dict.keys()]
+    for group, contigs in group_dict.items():
+        for contig in contigs:
+            if contig in keys:
+                group_dict[group][contig]["rep_{rep_num}".format(rep_num=rep_num)] += TPM_dict[contig]
+
 
 
 def write_output(group_dict, tag, species_1, species_2):
     with open("{tag}.tab".format(tag=tag), 'a') as output_file:
-        output_file.write("Annotation\t{species_1}_red_1\t{species_1}_red_2\t{species_1}_cer_1\t"
-                          "{species_1}_cer_2\t{species_1}_mar_1\t{species_1}_mar_2\t"
-                          "{species_2}_red_1\t{species_2}_red_2\t{species_2}_cer_1\t{species_2}_cer_2"
-                          "\t{species_2}_mar_1\t{species_2}_mar_2\n".format(species_1=species_1, species_2=species_2))
+        output_file.write("Annotation\t{species_1}_red\t{species_1}_cer\t{species_1}_mar\t"
+                          "{species_2}_red\t{species_2}_cer\t{species_2}_mar\n".format(
+                           species_1=species_1, species_2=species_2))
         for group, values in group_dict.items():
-            species_1_red_value_1, species_1_red_value_2, species_1_cer_value_1, species_1_cer_value_2, \
-            species_1_mar_value_1, species_1_mar_value_2, species_2_red_value_1, species_2_red_value_2,\
-            species_2_cer_value_1, species_2_cer_value_2, species_2_mar_value_1, species_2_mar_value_2 = \
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-            #if len(values) > 1:
+            species_1_red_value, species_1_cer_value, species_1_mar_value, \
+            species_2_red_value, species_2_cer_value, species_2_mar_value = \
+                0, 0, 0, 0, 0, 0
             for contig in values:
                 if species_1 in contig:
                     if "{species}_red".format(species=species_1) in contig:
-                        species_1_red_value_1 += group_dict[group][contig]["rep_1"]
-                        species_1_red_value_2 += group_dict[group][contig]["rep_2"]
+                        species_1_red_value += round(numpy.mean([float(group_dict[group][contig]["rep_1"]),
+                                                           float(group_dict[group][contig]["rep_2"])]), 2)
                     elif "{species}_cer".format(species=species_1) in contig:
-                        species_1_cer_value_1 += group_dict[group][contig]["rep_1"]
-                        species_1_cer_value_2 += group_dict[group][contig]["rep_2"]
+                        species_1_cer_value += round(numpy.mean([float(group_dict[group][contig]["rep_1"]),
+                                                           float(group_dict[group][contig]["rep_2"])]), 2)
                     elif "{species}_mar".format(species=species_1) in contig:
-                        species_1_mar_value_1 += group_dict[group][contig]["rep_1"]
-                        species_1_mar_value_2 += group_dict[group][contig]["rep_2"]
+                        species_1_mar_value += round(numpy.mean([float(group_dict[group][contig]["rep_1"]),
+                                                           float(group_dict[group][contig]["rep_2"])]), 2)
                 elif species_2 in contig:
                     if "{species}_red".format(species=species_2) in contig:
-                        species_2_red_value_1 += group_dict[group][contig]["rep_1"]
-                        species_2_red_value_2 += group_dict[group][contig]["rep_2"]
+                        species_2_red_value += round(numpy.mean([float(group_dict[group][contig]["rep_1"]),
+                                                           float(group_dict[group][contig]["rep_2"])]), 2)
                     elif "{species}_cer".format(species=species_2) in contig:
-                        species_2_cer_value_1 += group_dict[group][contig]["rep_1"]
-                        species_2_cer_value_2 += group_dict[group][contig]["rep_2"]
+                        species_2_cer_value += round(numpy.mean([float(group_dict[group][contig]["rep_1"]),
+                                                           float(group_dict[group][contig]["rep_2"])]), 2)
                     elif "{species}_mar".format(species=species_2) in contig:
-                        species_2_mar_value_1 += group_dict[group][contig]["rep_1"]
-                        species_2_mar_value_2 += group_dict[group][contig]["rep_2"]
-
-            output_file.write("{ID}\t{sp1_red_1}\t{sp1_red_2}\t{sp1_cer_1}\t{sp1_cer_2}\t{sp1_mar_1}\t{sp1_mar_2}\t"
-                              "{sp2_red_1}\t{sp2_red_2}\t{sp2_cer_1}\t{sp2_cer_2}\t{sp2_mar_1}\t{sp2_mar_2}\n".format(
-                                ID=group, sp1_red_1=species_1_red_value_1, sp1_red_2=species_1_red_value_2,
-                                sp1_cer_1=species_1_cer_value_1, sp1_cer_2=species_1_cer_value_2,
-                                sp1_mar_1=species_1_mar_value_1, sp1_mar_2=species_1_mar_value_2,
-                                sp2_red_1=species_2_red_value_1, sp2_red_2=species_2_red_value_2,
-                                sp2_cer_1=species_2_cer_value_1, sp2_cer_2=species_2_cer_value_2,
-                                sp2_mar_1=species_2_mar_value_1, sp2_mar_2=species_2_mar_value_2))
+                        species_2_mar_value += round(numpy.mean([float(group_dict[group][contig]["rep_1"]),
+                                                           float(group_dict[group][contig]["rep_2"])]), 2)
+            output_file.write("{ID}\t{sp1_red}\t{sp1_cer}\t{sp1_mar}\t"
+                              "{sp2_red}\t{sp2_cer}\t{sp2_mar}\n".format(
+                                ID=group, sp1_red=species_1_red_value, sp1_cer=species_1_cer_value,
+                                sp1_mar=species_1_mar_value, sp2_red=species_2_red_value,
+                                sp2_cer=species_2_cer_value, sp2_mar=species_2_mar_value))
 
 
 if __name__ == "__main__":

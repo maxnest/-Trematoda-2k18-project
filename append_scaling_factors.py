@@ -15,7 +15,7 @@ except ImportError:
 parser = argparse.ArgumentParser()
 parser.add_argument('--tab', type=argparse.FileType('r'), required=True,
                     help="table with correct groups with TPM-values of similar sequences (before normalization) "
-                         "['create_table_with_TPM [One|Two species]' output file without normalization]")
+                         "['create_table_with_TPM' output file without normalization]")
 parser.add_argument('--scaling_factors', type=argparse.FileType('r'), required=True,
                     help="file with scaling factors "
                          "[normalize.pl (Glusman et al., 2013) (--method net) stdout output file]")
@@ -44,7 +44,8 @@ def read_file_with_scaling_factors(file, scaling_factors):
     @param scaling_factors: python dictionary
     """
     for line in file:
-        sample, scaling_factor = line.strip().split("\t")[0], line.strip().split("\t")[1]
+        description = line.strip().split("\t")
+        sample, scaling_factor = description[0], description[1]
         scaling_factors[sample] = float(scaling_factor)
 
 
@@ -58,7 +59,7 @@ def normalization(group_dict, scaling_factors):
         for sample in samples.keys():
             TPM_value = group_dict[annotation_key][sample]
             if TPM_value != 0:
-                group_dict[annotation_key][sample] = TPM_value * scaling_factors[sample]
+                group_dict[annotation_key][sample] = round(TPM_value * scaling_factors[sample], 2)
 
 
 def write_output(group_dict, tag, header):
